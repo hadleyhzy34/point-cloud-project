@@ -1,3 +1,7 @@
+# sample data folder
+/home/swarm/developments/point-cloud-project/modelnet40_normal_resampled
+/home/swarm/developments/point-cloud-project/modelnet40_normal_resampled/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
