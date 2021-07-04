@@ -13,7 +13,14 @@ def voxel_filter(point_cloud, leaf_size):
     filtered_points = []
     # 作业3
     # 屏蔽开始
+    points_min = np.min(point_cloud, axis=0)
+    points_max = np.max(point_cloud, axis=0)
 
+    d_x = (points_max[0] - points_min[0])/leaf_size
+    d_y = (points_max[1] - points_min[1])/leaf_size
+    d_z = (points_max[2] - points_min[2])/leaf_size
+
+    
  
     # 屏蔽结束
 

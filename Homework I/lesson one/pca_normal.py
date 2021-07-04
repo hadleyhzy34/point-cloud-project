@@ -16,7 +16,21 @@ from pyntcloud import PyntCloud
 def PCA(data, correlation=False, sort=True):
     # 作业1
     # 屏蔽开始
+    # calculate mean value for each dimension/column
+    M = np.mean(data,axis=0)
+    # print(M.shape)
 
+    # centered array
+    pcd_center = data - M
+    # print(pcd_center.shape)
+
+    # calculate covariance matrix of centered matrix
+    pcd_conv = np.cov(pcd_center.T)
+    # print(pcd_conv)
+
+
+    # eigen value, vector of covariance matrix
+    eigenvalues, eigenvectors = np.linalg.eig(pcd_conv)
 
     # 屏蔽结束
 
@@ -56,6 +70,10 @@ def main():
     normals = []
     # 作业2
     # 屏蔽开始
+    for i in range(point_cloud_vector.points.shape(0)):
+        [k,idx,_] = pcd_tree.search_knn_vector_3d(points[i],200)
+        w,v = PCA(p.asarray(pcd_tree)[idx[1,:],:])
+        normals.append(v[-1,:])
 
     # 由于最近邻搜索是第二章的内容，所以此处允许直接调用open3d中的函数
 
