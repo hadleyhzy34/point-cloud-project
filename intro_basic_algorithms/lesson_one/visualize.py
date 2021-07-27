@@ -12,7 +12,7 @@ pcd = np.loadtxt("../../modelnet40_normal_resampled/airplane/airplane_0281.txt",
 # pcd = o3d.io.read_point_cloud(pcd[:,0:3], format='xyz')
 # o3d.visualization.draw_geometries([pcd])
 
-
+# import ipdb;ipdb.set_trace()
 # extract valuable dimensions
 pcd = pcd[:,0:3]
 
@@ -42,7 +42,7 @@ print(f'last sorted index is: {sorted_index}')
 
 # sorted eigen values and vectors
 sorted_values = eigenValues[sorted_index]
-sorted_vectors = eigenVector[sorted_index]
+sorted_vectors = eigenVector[:,sorted_index] # the column v[:,i] is the eigenvector corresponding to the eigenvalue w[i].
 
 print(f'sorted value is: {sorted_values}')
 print(f'sorted vectors is: {sorted_vectors}')

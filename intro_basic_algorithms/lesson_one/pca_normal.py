@@ -14,6 +14,7 @@ from pyntcloud import PyntCloud
 #     eigenvalues：特征值
 #     eigenvectors：特征向量
 def PCA(data, correlation=False, sort=True):
+    # import ipdb;ipdb.set_trace()
     # 作业1
     # 屏蔽开始
     # calculate mean value for each dimension/column
@@ -37,7 +38,7 @@ def PCA(data, correlation=False, sort=True):
     if sort:
         sort = eigenvalues.argsort()[::-1]
         eigenvalues = eigenvalues[sort]
-        eigenvectors = eigenvectors[:, sort]
+        eigenvectors = eigenvectors[:, sort] #note that eigenvectors[:,i] is ith eigenvector
 
     return eigenvalues, eigenvectors
 
@@ -50,38 +51,49 @@ def main():
     # filename = os.path.join(root_dir, cat[cat_index],'train', cat[cat_index]+'_0001.ply') # 默认使用第一个点云
 
     # 加载原始点云
-    point_cloud_pynt = PyntCloud.from_file("/Users/renqian/Downloads/program/cloud_data/11.ply")
-    point_cloud_o3d = point_cloud_pynt.to_instance("open3d", mesh=False)
+    # point_cloud_pynt = PyntCloud.from_file("/Users/renqian/Downloads/program/cloud_data/11.ply")
+    # point_cloud_o3d = point_cloud_pynt.to_instance("open3d", mesh=False)
+    # import ipdb;ipdb.set_trace()
+    pcd = o3d.geometry.PointCloud()
+    points = np.loadtxt("../../modelnet40_normal_resampled/airplane/airplane_0281.txt",delimiter=',')
+    points = points[:,0:3]
+    pcd.points = o3d.utility.Vector3dVector(points)
+    # o3d.visualization.draw_geometries([pcd])
     # o3d.visualization.draw_geometries([point_cloud_o3d]) # 显示原始点云
 
     # 从点云中获取点，只对点进行处理
-    points = point_cloud_pynt.points
+    # points = point_cloud_pynt.points
     print('total points number is:', points.shape[0])
 
     # 用PCA分析点云主方向
-    w, v = PCA(points)
-    point_cloud_vector = v[:, 2] #点云主方向对应的向量
+    w, v = PCA(pcd.points)
+    point_cloud_vector = v[:, 2] #点云主方向对应的向量  ??? why the principal vector component is the last index?
     print('the main orientation of this pointcloud is: ', point_cloud_vector)
     # TODO: 此处只显示了点云，还没有显示PCA
     # o3d.visualization.draw_geometries([point_cloud_o3d])
     
     # 循环计算每个点的法向量
-    pcd_tree = o3d.geometry.KDTreeFlann(point_cloud_o3d)
+    # pcd_tree = o3d.geometry.KDTreeFlann(point_cloud_o3d)
+    pcd_tree = o3d.geometry.KDTreeFlann(pcd) # create kd tree
+
     normals = []
+    # import ipdb;ipdb.set_trace()
     # 作业2
     # 屏蔽开始
-    for i in range(point_cloud_vector.points.shape(0)):
-        [k,idx,_] = pcd_tree.search_knn_vector_3d(points[i],200)
-        w,v = PCA(p.asarray(pcd_tree)[idx[1,:],:])
-        normals.append(v[-1,:])
+    for i in range(points.shape[0]):
+        [k,idx,_] = pcd_tree.search_knn_vector_3d(pcd.points[i],200) # return idx:index of nearest points
+        w,v = PCA(np.asarray(pcd.points)[idx[1:],:])  #input as numpy array, index starting from 1
+        normals.append(v[:,-1])
+        # normals.append(v[:,0])
 
     # 由于最近邻搜索是第二章的内容，所以此处允许直接调用open3d中的函数
 
+    print(f'current size of normals is: {len(normals)}')
     # 屏蔽结束
     normals = np.array(normals, dtype=np.float64)
     # TODO: 此处把法向量存放在了normals中
-    point_cloud_o3d.normals = o3d.utility.Vector3dVector(normals)
-    o3d.visualization.draw_geometries([point_cloud_o3d])
+    pcd.normals = o3d.utility.Vector3dVector(normals)
+    o3d.visualization.draw_geometries([pcd])
 
 
 if __name__ == '__main__':
