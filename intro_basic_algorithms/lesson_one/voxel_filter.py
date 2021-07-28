@@ -54,18 +54,20 @@ def voxel_filter(point_cloud, leaf_size):
     #         centroid.append(sum/point_count)
 
     # random method
-    # centroid method
     centroid = []
-    point_count = 0
+    temp = []
     for i in range(points.shape[0]):
+        # print(i)
+        # if i == 9999:
+        #     import ipdb;ipdb.set_trace()
         if i!=0 and idx[sort_idx[i]]!=idx[sort_idx[i-1]]:
-            centroid.append(sum/point_count)
-            point_count = 1
+            centroid.append(temp[int(np.random.rand()*len(temp))])
+            temp = [points[sort_idx[i],:]]
         else:
-            point_count += 1
+            temp.append(points[sort_idx[i]])
         
         if i == points.shape[0]-1:
-            centroid.append(sum/point_count)
+            centroid.append(temp[int(np.random.rand()*len(temp))])
     
     filtered_points = centroid
     # 屏蔽结束
@@ -95,7 +97,7 @@ def main():
     # o3d.visualization.draw_geometries([point_cloud_o3d]) # 显示原始点云
 
     # 调用voxel滤波函数，实现滤波
-    filtered_cloud = voxel_filter(point_cloud_o3d.points, 0.05)
+    filtered_cloud = voxel_filter(point_cloud_o3d.points, 0.1)
     point_cloud_o3d.points = o3d.utility.Vector3dVector(filtered_cloud)
     # 显示滤波后的点云
     o3d.visualization.draw_geometries([point_cloud_o3d])
