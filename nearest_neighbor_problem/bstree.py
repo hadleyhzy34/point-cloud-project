@@ -109,6 +109,10 @@ class KNNContainer:
         self.worst_dist = self.container[self.k-1][0]
 
 def knn_search(root:Node, res:KNNContainer, key):
+    '''
+    return true when it finds k nearest points
+    return false when it may not find all k nearest points
+    '''
     if root is None:
         return False
     res.add_point(math.fabs(root.key-key),root.value)
