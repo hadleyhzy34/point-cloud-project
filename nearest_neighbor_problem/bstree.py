@@ -1,4 +1,7 @@
 import numpy as np
+import sys
+import math
+from collections import deque
 
 # Node Class
 class Node:
@@ -13,14 +16,6 @@ class Node:
         self.value = value
         self.left = None
         self.right = None
-
-# data generation
-db_size = 10
-data = np.random.permutation(db_size).tolist()
-print(data)
-
-data = np.array([8,3,10,1,6,4,7,14,13])
-
 
 def insert(root, key, value = -1):
     '''
@@ -90,15 +85,87 @@ def postorder(root):
         postorder(root.right)
         print(root.key)
 
+class KNNContainer:
+    '''
+    container with deque structure to contain all candidate k nearest neighbor points
+    '''
+    def __init__(self, k):
+        self.k = k
+        self.worst_dist = sys.maxsize
+        self.container = deque(maxlen=self.k) # deque container, [(distance, index)]
+        for i in range(k):
+            self.container.append((self.worst_dist,0))
+    
+    def add_point(self, dist, index):
+        if dist > self.worst_dist: # if distance is already larger current kth nearest point
+            return
+        
+        for i in range(len(self.container)):
+            if dist < self.container[i][0]:
+                self.container.pop() # pop right last neighbor point
+                self.container.insert(i,(dist,index)) # insert ith point
+                break
+        
+        self.worst_dist = self.container[self.k-1][0]
+
+def knn_search(root:Node, res:KNNContainer, key):
+    if root is None:
+        return False
+    res.add_point(math.fabs(root.key-key),root.value)
+
+    if res.worst_dist == 0:
+        return True
+    
+    # if root.key >= key:
+    #     if knn_search(root.left, res, key):
+    #         return True
+    #     elif math.fabs(root.key-key) < res.worst_dist:
+    #         return knn_search(root.right,res,key)
+    #     return False
+    # else:
+    #     if knn_search(root.right, res, key):
+    #         return True
+    #     elif math.fabs(root.key-key) < res.worst_dist:
+    #         return knn_search(root.left, res, key)
+    #     return False
+
+    if root.key >= key:
+        knn_search(root.left, res, key)
+        if math.fabs(root.key-key) < res.worst_dist:
+            return knn_search(root.right,res,key)
+        return False
+    else:
+        knn_search(root.right, res, key)
+        if math.fabs(root.key-key) < res.worst_dist:
+            return knn_search(root.left, res, key)
+        return False
+    
+
+# data generation
+db_size = 500
+data = np.random.permutation(db_size).tolist()
+print(data)
+
+# data = np.array([8,3,10,1,6,4,7,14,13])
+        
+
 # generate bst by using insert method
 root = None
 for i,point in enumerate(data):
     root = insert(root, point, i)
 
-print(f'------------------current inorder sequence of bst------------------------------')
-inorder(root)
-print(f'------------------current preorder sequence of bst------------------------------')
-preorder(root)
-print(f'------------------current postorder sequence of bst------------------------------')
-postorder(root)
+# print(f'------------------current inorder sequence of bst------------------------------')
+# inorder(root)
+# print(f'------------------current preorder sequence of bst------------------------------')
+# preorder(root)
+# print(f'------------------current postorder sequence of bst------------------------------')
+# postorder(root)
 
+
+k = 5
+query_key = 101
+res = KNNContainer(k)
+knn_search(root, res, query_key)
+print(res.container)
+for c in res.container:
+    print(data[c[1]])
