@@ -91,7 +91,10 @@ class PointNetDataset(Dataset):
 
 if __name__ == "__main__":
   train_data = PointNetDataset("./dataset/modelnet40_normal_resampled", train=0)
+  # train_data = PointNetDataset("/home/swarm/developments/point_cloud/modelnet40_normal_resampled/",train=0)
+  # train_data = PointNetDataset("../../modelnet40_normal_resampled",train=0)
   train_loader = DataLoader(train_data, batch_size=2, shuffle=True)
+  import ipdb;ipdb.set_trace()
   cnt = 0
   for pts, label in train_loader:
     # print(pts.shape)
