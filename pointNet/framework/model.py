@@ -25,7 +25,8 @@ class STNkd(nn.Module):
         self.k = k
 
     def forward(self, x):
-        batchsize = x.size()[0]
+        # import ipdb;ipdb.set_trace()
+        batchsize = x.size()[0] # batch size
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
@@ -59,9 +60,10 @@ class Backbone(nn.Module):
             self.fstn = STNkd(k=64)
 
     def forward(self, x):
-        n_pts = x.size()[2]
+        # import ipdb;ipdb.set_trace()
+        n_pts = x.size()[2] # number of features/points
         trans = self.stn(x)
-        x = x.transpose(2, 1)
+        x = x.transpose(2, 1) # 3x10000->10000x3 mul 3x3
         x = torch.bmm(x, trans)
         x = x.transpose(2, 1)
         x = F.relu(self.bn1(self.conv1(x)))
@@ -104,7 +106,7 @@ class PointNet(nn.Module):
 
   def forward(self, x):
     x,trans, trans_feat = self.feat(x)
-    print(f'after backbone, size of output of x is: {x.size()}')
+    # print(f'after backbone, size of output of x is: {x.size()}')
     x = F.relu(self.bn1(self.fc1(x)))
     x = F.relu(self.bn2(self.dropout(self.fc2(x))))
     x = self.fc3(x)
@@ -114,6 +116,6 @@ class PointNet(nn.Module):
 
 if __name__ == "__main__":
   net = PointNet(k=40,feature_transform=True)
-  sim_data = Variable(torch.rand(3, 3, 10000))
+  sim_data = Variable(torch.rand(3, 3, 10000))  # batch size, channels, number of features
   out,_,_ = net(sim_data)
   print('gfn', out.size())

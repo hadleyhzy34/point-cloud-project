@@ -1,15 +1,17 @@
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
+import torch.nn.functional as F
 import torch
 import numpy as np
 import time
 import os
 import datetime
 
-from dataset import PointNetDataset
+from dataset import PointNetDataset, feature_transform_regularizer
 from model import PointNet
 
+K = 40 # number of classes
 SEED = 13
 batch_size = 32
 epochs = 100
@@ -44,56 +46,73 @@ def load_ckp(ckp_path, model, optimizer):
 
 
 def softXEnt(prediction, real_class):
-    # TODO: return loss here
+    return F.nll_loss(prediction, real_class)
 
 
-def get_eval_acc_results(model, data_loader, device):
-    """
-    ACC
-    """
-    seq_id = 0
-    model.eval()
+# def feature_transform_regularizer(trans):
+#     d = trans.size()[1]
+#     batchsize = trans.size()[0]
+#     I = torch.eye(d)[None, :, :]
+#     if trans.is_cuda:
+#         I = I.cuda()
+#     loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2,1)) - I, dim=(1,2)))
+#     return loss
 
-    distribution = np.zeros([5])
-    confusion_matrix = np.zeros([5, 5])
-    pred_ys = []
-    gt_ys = []
-    with torch.no_grad():
-        accs = []
-        for x, y in data_loader:
-            x = x.to(device)
-            y = y.to(device)
+#     loss = F.nll_loss(pred,targets) + feature_transform_regularizer(trans_feat)
+#     # TODO: return loss here
 
-            # TODO: put x into network and get out
-            out = 
 
-            # TODO: get pred_y from out
-            pred_y =
-            gt = np.argmax(y.cpu().numpy(), axis=1)
+# def get_eval_acc_results(model, data_loader, device):
+#     """
+#     ACC
+#     """
+#     seq_id = 0
+#     model.eval()
 
-            # TODO: calculate acc from pred_y and gt
-            acc = 
-            gt_ys = np.append(gt_ys, gt)
-            pred_ys = np.append(pred_ys, pred_y)
-            idx = gt
+#     distribution = np.zeros([5])
+#     confusion_matrix = np.zeros([5, 5])
+#     pred_ys = []
+#     gt_ys = []
+#     with torch.no_grad():
+#         accs = []
+#         for points, targets in data_loader:
+#             points = points.to(device)
+#             targets = targets.to(device)
 
-            accs.append(acc)
+#             # TODO: put x into network and get out
+#             pred,trans,trans_feat = model(points)
+#             out = 
 
-        return np.mean(accs)
+#             # TODO: get pred_y from out
+#             pred_choice = pred.data.max(1)[1]
+#             pred_y =
+#             gt = np.argmax(y.cpu().numpy(), axis=1)
+
+#             # TODO: calculate acc from pred_y and gt
+#             acc = 
+#             gt_ys = np.append(gt_ys, gt)
+#             pred_ys = np.append(pred_ys, pred_y)
+#             idx = gt
+
+#             accs.append(acc)
+
+#         return np.mean(accs)
 
 
 if __name__ == "__main__":
+    # import ipdb;ipdb.set_trace()
     writer = SummaryWriter('./output/runs/tersorboard')
     torch.manual_seed(SEED)
-    device = torch.device(f'cuda:{gpus[0]}' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device(f'cuda:{gpus[0]}' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cpu')
     print("Loading train dataset...")
-    train_data = PointNetDataset("../../../dataset/modelnet40_normal_resampled", train=0)
+    train_data = PointNetDataset("../../modelnet40_normal_resampled", train=0)
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     print("Loading valid dataset...")
-    val_data = PointNetDataset("../../../dataset/modelnet40_normal_resampled/", train=1)
+    val_data = PointNetDataset("../../modelnet40_normal_resampled/", train=1)
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
     print("Set model and optimizer...")
-    model = PointNet().to(device=device)
+    model = PointNet(k=K).to(device=device)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.StepLR(
           optimizer, step_size=decay_lr_every, gamma=decay_lr_factor)
@@ -102,47 +121,78 @@ if __name__ == "__main__":
     model.train()
     print("Start trainning...")
     for epoch in range(epochs):
+      import ipdb;ipdb.set_trace()
       acc_loss = 0.0
       num_samples = 0
       start_tic = time.time()
-      for x, y in train_loader:
-        x = x.to(device)
-        y = y.to(device)
+      for i, (points,targets) in enumerate(train_loader):
+        # input data handling, points dimension: batch_size, channels, number_points
+        # points = points.transpose(2, 1)
+        points = points.to(device)
+        targets = targets.to(device)
 
-        # TODO: set grad to zero
+        # reset gradients
+        optimizer.zero_grad()
+        # forward
+        pred,trans,trans_feat = model(points)
+        # loss
+        loss = F.nll_loss(pred,torch.argmax(targets,dim=1)) 
+        # if + feature_transform_regularizer(trans_feat)
+
+        loss.backward()
+        optimizer.step()
+
+        pred_choice = pred.data.max(1)[1]
+        correct = pred_choice.eq(torch.argmax(targets,dim=1)).cpu().sum()
+        print(f'epoch: {epoch}, ith: {i}, batch_size:{batch_size}, train loss: {loss.item()} accuracy: {correct.item()/float(batch_size)}')    
 
         # TODO: put x into network and get out
-        out = 
+        # out = 
 
-        loss = softXEnt(out, y)
+        # loss = softXEnt(out, y)
         
         # TODO: loss backward
 
         # TODO: update network's param
         
         acc_loss += batch_size * loss.item()
-        num_samples += y.shape[0]
+        num_samples += targets.shape[0]
         global_step += 1
-        acc = np.sum(np.argmax(out.cpu().detach().numpy(), axis=1) == np.argmax(y.cpu().detach().numpy(), axis=1)) / len(y)
+        # acc = np.sum(np.argmax(out.cpu().detach().numpy(), axis=1) == np.argmax(y.cpu().detach().numpy(), axis=1)) / len(y)
         # print('acc: ', acc)
         if (global_step + 1) % show_every == 0:
           # ...log the running loss
           writer.add_scalar('training loss', acc_loss / num_samples, global_step)
-          writer.add_scalar('training acc', acc, global_step)
+          writer.add_scalar('training acc', correct, global_step)
           # print( f"loss at epoch {epoch} step {global_step}:{loss.item():3f}, lr:{optimizer.state_dict()['param_groups'][0]['lr']: .6f}, time:{time.time() - start_tic: 4f}sec")
+        
+        # validation
+        if i % 10 == 0:
+              j, data = next(enumerate(val_loader, 0))
+              points, target = data
+              # points = points.transpose(2, 1)
+              # points, target = points.cuda(), target.cuda()
+              model = model.eval()
+              pred, _, _ = model(points)
+              loss = F.nll_loss(pred,torch.argmax(targets,dim=1))
+              pred_choice = pred.data.max(1)[1]
+              correct = pred_choice.eq(torch.argmax(target,dim=1)).cpu().sum()
+              print('[%d: %d/%d] loss: %f accuracy: %f' % (epoch, i, batch_size, loss.item(), correct.item()/float(batch_size)))
+
       scheduler.step()
       print(f"loss at epoch {epoch}:{acc_loss / num_samples:.3f}, lr:{optimizer.state_dict()['param_groups'][0]['lr']: .6f}, time:{time.time() - start_tic: 4f}sec")
-      
-      if (epoch + 1) % val_every == 0:
+      torch.save(model.state_dict(), '%s/cls_model_%d.pth' % ('/home/swarm/developments/point_cloud/pointNet/framework', epoch))
+
+      # if (epoch + 1) % val_every == 0:
         
-        acc = get_eval_acc_results(model, val_loader, device)
-        print("eval at epoch[" + str(epoch) + f"] acc[{acc:3f}]")
-        writer.add_scalar('validing acc', acc, global_step)
+      #   acc = get_eval_acc_results(model, val_loader, device)
+      #   print("eval at epoch[" + str(epoch) + f"] acc[{acc:3f}]")
+      #   writer.add_scalar('validing acc', acc, global_step)
 
-        if acc > best_acc:
-          best_acc = acc
-          save_ckp(save_dir, model, optimizer, epoch, best_acc, date)
+      #   if acc > best_acc:
+      #     best_acc = acc
+      #     save_ckp(save_dir, model, optimizer, epoch, best_acc, date)
 
-          example = torch.randn(1, 3, 10000).to(device)
-          traced_script_module = torch.jit.trace(model, example)
-          traced_script_module.save("../output/traced_model.pt")
+      #     example = torch.randn(1, 3, 10000).to(device)
+      #     traced_script_module = torch.jit.trace(model, example)
+      #     traced_script_module.save("../output/traced_model.pt")

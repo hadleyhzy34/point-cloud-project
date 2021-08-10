@@ -2,12 +2,13 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from dataset import PointNetDataset
 from model import PointNet
 
 
-
+K = 40
 SEED = 13
 gpus = [0]
 batch_size = 1
@@ -21,38 +22,58 @@ def load_ckp(ckp_path, model):
 if __name__ == "__main__":
   torch.manual_seed(SEED)
   device = torch.device(f'cuda:{gpus[0]}' if torch.cuda.is_available() else 'cpu')
+  device = torch.device(f'cpu')
   print("Loading test dataset...")
-  test_data = PointNetDataset("./dataset/modelnet40_normal_resampled", train=1)
+  test_data = PointNetDataset("../../modelnet40_normal_resampled", train=1)
+  # test_data = PointNetDataset("./dataset/modelnet40_normal_resampled", train=1)
   test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
-  model = PointNet().to(device=device)
+  model = PointNet(k=K).to(device=device)
   if ckp_path:
     load_ckp(ckp_path, model)
     model = model.to(device)
   
   model.eval()
 
-  with torch.no_grad():
-    accs = []
-    gt_ys = []
-    pred_ys = []
-    for x, y in test_loader:
-      x = x.to(device)
-      y = y.to(device)
+  total_correct = 0
+  total_testset = 0
+  for i,data in tqdm(enumerate(test_loader, 0)):
+      points, target = data
+      # target = target[:, 0]
+      # points = points.transpose(2, 1)
+      # points, target = points.cuda(), target.cuda()
+      model = model.eval()
+      pred, _, _ = model(points)
 
-      # TODO: put x into network and get out
-      out =
+      pred_choice = pred.data.max(1)[1]
+      correct = pred_choice.eq(torch.argmax(target.data,dim=1)).cpu().sum()
+      total_correct += correct.item()
+      total_testset += points.size()[0]
 
-      # TODO: get pred_y from out
-      pred_y = 
+print("final accuracy {}".format(total_correct / float(total_testset)))
 
-      gt = np.argmax(y.cpu().numpy(), axis=1)
-      print("pred[" + str(pred_y)+"] gt[" + str(gt) + "]")
 
-      # TODO: calculate acc from pred_y and gt
-      acc = 
-      gt_ys = np.append(gt_ys, gt)
-      pred_ys = np.append(pred_ys, pred_y)
+  # with torch.no_grad():
+  #   accs = []
+  #   gt_ys = []
+  #   pred_ys = []
+  #   for x, y in test_loader:
+  #     x = x.to(device)
+  #     y = y.to(device)
 
-      accs.append(acc)
+  #     # TODO: put x into network and get out
+  #     out =
 
-    print("final acc is: " + str(np.mean(accs)))
+  #     # TODO: get pred_y from out
+  #     pred_y = 
+
+  #     gt = np.argmax(y.cpu().numpy(), axis=1)
+  #     print("pred[" + str(pred_y)+"] gt[" + str(gt) + "]")
+
+  #     # TODO: calculate acc from pred_y and gt
+  #     acc = 
+  #     gt_ys = np.append(gt_ys, gt)
+  #     pred_ys = np.append(pred_ys, pred_y)
+
+  #     accs.append(acc)
+
+  #   print("final acc is: " + str(np.mean(accs)))

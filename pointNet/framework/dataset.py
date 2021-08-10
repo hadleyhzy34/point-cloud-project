@@ -4,6 +4,7 @@ import json
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import numpy as np
+from tqdm import tqdm
 
 
 def read_pcd_from_file(file):
@@ -44,13 +45,21 @@ class PointNetDataset(Dataset):
     return len(self._features)
   
   def __getitem__(self, idx):
+    # import ipdb;ipdb.set_trace()
     feature, label = self._features[idx], self._labels[idx]
     
-    # TODO: normalize feature
+    # normalize feature
+    feature = feature - np.mean(feature,axis=0)
+    scale = np.max(np.sqrt(np.sum(feature ** 2, axis = 1)),0)
+    feature = feature / scale
     
-    # TODO: rotation to feature
+    # data augmentation, random rotation
+    theta = np.random.uniform(0, np.pi * 2)
+    rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
+    feature[:,[0,2]] = feature[:,[0,2]].dot(rotation_matrix)
 
-    # jitter
+
+    # data augmentation, random jitter
     feature += np.random.normal(0, 0.02, size=feature.shape)
     feature = torch.Tensor(feature.T)
 
@@ -61,6 +70,7 @@ class PointNetDataset(Dataset):
     return feature, label
   
   def load(self, root_dir):
+    # import ipdb;ipdb.set_trace()
     things = os.listdir(root_dir)
     files = []
     for f in things:
@@ -73,7 +83,8 @@ class PointNetDataset(Dataset):
       if f == "modelnet40_shape_names.txt":
         self._classes = read_file_names_from_file(root_dir + '/' + f)
     tmp_classes = []
-    for file in files:
+    # import ipdb;ipdb.set_trace()
+    for file in tqdm(files):
       num = file.split("_")[-1]
       kind = file.split("_" + num)[0]
       if kind not in tmp_classes:
@@ -84,21 +95,31 @@ class PointNetDataset(Dataset):
       self._features.append(np_pts)
       self._labels.append(kind)
     if self._train == 0:
-      print("There are " + str(len(self._labels)) + " trian files.")
+      print("There are " + str(len(self._labels)) + " train files.")
     elif self._train == 1:
       print("There are " + str(len(self._labels)) + " test files.")
-      
+
+def feature_transform_regularizer(trans):
+    d = trans.size()[1]
+    batchsize = trans.size()[0]
+    I = torch.eye(d)[None, :, :]
+    if trans.is_cuda:
+        I = I.cuda()
+    loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2,1)) - I, dim=(1,2)))
+    return loss
 
 if __name__ == "__main__":
-  train_data = PointNetDataset("./dataset/modelnet40_normal_resampled", train=0)
+  train_data = PointNetDataset("../../modelnet40_normal_resampled", train=0)
   # train_data = PointNetDataset("/home/swarm/developments/point_cloud/modelnet40_normal_resampled/",train=0)
   # train_data = PointNetDataset("../../modelnet40_normal_resampled",train=0)
   train_loader = DataLoader(train_data, batch_size=2, shuffle=True)
-  import ipdb;ipdb.set_trace()
+  # import ipdb;ipdb.set_trace()
   cnt = 0
   for pts, label in train_loader:
     # print(pts.shape)
+    import ipdb;ipdb.set_trace()
     print(label.shape)
     cnt += 1
     if cnt > 3:
-      break
+        break
+    print(train_data[0])
