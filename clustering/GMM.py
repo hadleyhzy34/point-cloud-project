@@ -14,6 +14,9 @@ class GMM(object):
     def __init__(self, n_clusters, max_iter=50):
         self.n_clusters = n_clusters
         self.max_iter = max_iter
+
+        # initialize prior probability distribution
+        self.prior_dist = None
     
     # 屏蔽开始
     # 更新W
@@ -31,16 +34,49 @@ class GMM(object):
     # 屏蔽结束
     
     def fit(self, data):
-        # 作业3
-        # 屏蔽开始
+        data_min = np.min(data,axis=0)
+        data_max = np.max(data,axis=0)
 
+        num = data.shape[0]
+        #initialize prior distribution probability
+        self.prior_dist = np.ones((num,self.n_clusters))*(1/self.n_clusters)
 
-        # 屏蔽结束
+        #initialize n_cluster guassian distribution
+        mu = np.random.randn(self.k_,2)*(data_max-data_min)+data_min
+        var = 
+       
+        for _ in range(self.max_iter_):
+            # calculate prob for ith data and jth gaussian distribution
+
+            # calculate pi
+
+            # calculate mu
+
+            # calculate var
+
+            #
+
+            #
+            # recalculate centers
+            self.centers = np.zeros((self.k_,3))
+            for i in range(data.shape[0]):
+                index = np.argmin(distance[i,:])
+                self.centers[index] += np.array([data[i][0],data[i][1],1])
+            
+            for j in range(self.k_):
+                if self.centers[j][2] == 0:
+                    continue
+                self.centers[j,0:2] = self.centers[j,0:2]/self.centers[j][2]
+                # print(f'current centers are: {self.centers[j]}')
     
     def predict(self, data):
-        # 屏蔽开始
-
-        # 屏蔽结束
+        result = []
+        distance = (np.array([data[:,0],]*self.k_).transpose()-self.centers[:,0])**2 + \
+            (np.array([data[:,1],]*self.k_).transpose()-self.centers[:,1])**2
+        
+        for i in range(data.shape[0]):
+            result.append(np.argmin(distance[i,:]))
+        return result
 
 # 生成仿真数据
 def generate_X(true_Mu, true_Var):
