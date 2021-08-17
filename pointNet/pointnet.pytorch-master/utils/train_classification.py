@@ -53,7 +53,8 @@ elif opt.dataset_type == 'modelnet40':
     dataset = ModelNetDataset(
         root=opt.dataset,
         npoints=opt.num_points,
-        split='trainval')
+        # split='trainval')
+        split='train')
 
     test_dataset = ModelNetDataset(
         root=opt.dataset,
@@ -98,6 +99,7 @@ classifier.cuda()
 num_batch = len(dataset) / opt.batchSize
 
 for epoch in range(opt.nepoch):
+    import ipdb;ipdb.set_trace()
     scheduler.step()
     for i, data in enumerate(dataloader, 0):
         points, target = data
