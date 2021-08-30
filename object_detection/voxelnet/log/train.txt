@@ -1,0 +1,4 @@
+Fri Aug 27 18:09:12 2021	Train: 20 @ epoch:1/1 loss: 2.1251 reg_loss: 0.5851 cls_loss: 1.5400 cls_pos_loss: 0.6097 cls_neg_loss: 0.6254 forward time: 2.4888 batch time: 9.0570
+Fri Aug 27 18:33:22 2021	Train: 20 @ epoch:1/1 loss: 0.6804 reg_loss: 0.0000 cls_loss: 0.6804 cls_pos_loss: 0.0000 cls_neg_loss: 0.6804 forward time: 2.6085 batch time: 9.5779
+Fri Aug 27 18:36:28 2021	Train: 40 @ epoch:1/1 loss: 2.1327 reg_loss: 0.2517 cls_loss: 1.8810 cls_pos_loss: 0.7753 cls_neg_loss: 0.7180 forward time: 2.9935 batch time: 10.0657
+Fri Aug 27 18:39:38 2021	Train: 60 @ epoch:1/1 loss: 1.7029 reg_loss: 0.2404 cls_loss: 1.4624 cls_pos_loss: 0.5136 cls_neg_loss: 0.6919 forward time: 2.5267 batch time: 9.4199
