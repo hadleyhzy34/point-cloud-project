@@ -6,6 +6,7 @@ object_detection/pointpillar/second/model_v2/
 object_detection/pointpillar/second/model_v3/
 object_detection/voxelnet/data/
 object_detection/voxelnet/log/
+center_point/CenterPoint/spconv/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
