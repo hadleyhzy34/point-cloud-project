@@ -32,7 +32,7 @@ class config:
     neg_threshold = 0.45
 
     #   anchors: (200, 176, 2, 7) x y z h w l r
-    import ipdb;ipdb.set_trace()
+    # import ipdb;ipdb.set_trace()
     x = np.linspace(xrange[0]+vw, xrange[1]-vw, W/2)
     y = np.linspace(yrange[0]+vh, yrange[1]-vh, H/2)
     cx, cy = np.meshgrid(x, y)
