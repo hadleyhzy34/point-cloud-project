@@ -4,6 +4,7 @@ from scipy.spatial import KDTree
 import open3d as o3d
 from tqdm import tqdm
 from visualize import read_bin_velodyne,kitti_random_pcl, pcl_random, pcl_random_visualize, pcl_data
+from frnn.gpu_frnn import gpu_frnn
 
 def iss(data, gamma21, gamma32, KDTree_radius, NMS_radius, max_num=100):
     """
@@ -18,46 +19,41 @@ def iss(data, gamma21, gamma32, KDTree_radius, NMS_radius, max_num=100):
     Return:
         is_keypoint->list[bool]: mask indicating whether point is a keypoint or not
     """
-    import ipdb;ipdb.set_trace()
+    # import ipdb;ipdb.set_trace()
     print(f'iss algo started...{data.shape[0]} of points prepared')
 
-    # KD tree to find nearest points within radius r
-    tree = KDTree(data)
-    # intialize is_keypoint
-    is_keypoint = np.full(data.shape[0], False)
+    #transfer data dtype to float32 before processing it on GPU
+    temp_data = data.astype(np.float32)
+
+    # create mask to indicate whether point i and point j are within range r
+    adj = gpu_frnn(temp_data,KDTree_radius)
+    adj = adj.reshape((data.shape[0],data.shape[0]))
+
     # initialize empty list to store neighbor points
     r_list = []
     l3_list = []
-
-    # radius_neighbor = tree.query_ball_point(data, KDTree_radius)
-
-    print("-" * 10, "start to search keypoints", '-' * 10)
-    for i, point in tqdm(enumerate(data), total=data.shape[0]):
-        # radius NN to get all all neighbors' indices' list
-        indices = tree.query_ball_point(point, KDTree_radius)
-        # store neighbor indices
-        r_list.append(indices)
-        # neighbor points
-        neighbors = data[indices]
-        # weights initialization
-        weights = []
-        # weights calculation
-        for indice in indices:
-            weights.append(1 / len(tree.query_ball_point(data[indice], KDTree_radius)))
-        # Convert w to numpy ndarray
-        weights = np.asarray(weights)
-        # (pj - pi) in matrix format
-        P = neighbors - point
-        # Compute Weighted covariance matrix Cov(pi)
-        Cov = weights * P.T @ P / np.sum(weights)
-        # Compute eigenvalues of Cov(pi) as lambda_1, lambda_2, lambda_3 in descending order
-        e_values, e_vectors = np.linalg.eig(Cov)
-        l1, l2, l3 = e_values[np.argsort(-e_values)]
-        # Store point's lambda_3 value
-        l3_list.append(l3)
-        # Initialize keypoint proposal with the criterion: l2 / l1 < g21 and l3 / l2 < g32
-        if l2 / l1 < gamma21 and l3 / l2 < gamma32:
-            is_keypoint[i] = True
+    is_keypoint = np.full(data.shape[0],False)
+    
+    weights = np.sum(adj,axis=1)
+    for i in tqdm(range(data.shape[0])):
+        if weights[i] > 1:
+            indices = np.argwhere(adj[i,:]>0)[:,0]
+            weight = 1 / weights[indices]
+            neighbors = data[indices]
+            # store neighbor indices
+            r_list.append(indices)
+            # (pj - pi) in matrix format
+            P = neighbors - data[i]
+            # Compute Weighted covariance matrix Cov(pi)
+            Cov = weight * P.T @ P / np.sum(weight)
+            # Compute eigenvalues of Cov(pi) as lambda_1, lambda_2, lambda_3 in descending order
+            e_values, e_vectors = np.linalg.eig(Cov)
+            l1, l2, l3 = e_values[np.argsort(-e_values)]
+            # Store point's lambda_3 value
+            l3_list.append(l3)
+            # Initialize keypoint proposal with the criterion: l2 / l1 < g21 and l3 / l2 < g32
+            if l2 / l1 < gamma21 and l3 / l2 < gamma32:
+                is_keypoint[i] = True
 
     print("Performing NMS")
     # For each point (pi) in the point cloud
@@ -99,6 +95,7 @@ def main():
     visualize iss points
     """
     pts = pcl_data()
+    # pts = kitti_random_pcl()
     keypoint = iss(pts, gamma21=0.6, gamma32=0.6, KDTree_radius=0.15, NMS_radius=0.3, max_num=5000)
     
     pts_colors = np.tile([0.5,0.5,0.5], (pts.shape[0], 1))
