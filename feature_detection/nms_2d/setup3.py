@@ -1,3 +1,12 @@
+
+# --------------------------------------------------------
+# Faster R-CNN
+# Copyright (c) 2015 Microsoft
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Ross Girshick
+# --------------------------------------------------------
+
+
 from distutils.core import setup
 from Cython.Build import cythonize
 from distutils.extension import Extension
@@ -117,7 +126,7 @@ ext_modules =     [Extension('gpu_nms',
     )]
 
 setup(
-    name='frnn',
+    name='fast_rcnn',
     ext_modules=ext_modules,
     # inject our custom trigger
     cmdclass={'build_ext': custom_build_ext},
