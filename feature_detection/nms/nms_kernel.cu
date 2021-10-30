@@ -19,7 +19,8 @@ int const maxThreadsY = 320;
 int const xPerBlock = 32;
 int const yPerBlock = 32;
 
-__global__ void _nms_kernel(int num_keypoints,
+__global__ void _nms_kernel(const int num_keypoints,
+                            const int num_points, 
                             const int *adj,
                             int *mask,
                             const int *mask_idx,
@@ -34,40 +35,64 @@ __global__ void _nms_kernel(int num_keypoints,
         for(i=0; i*maxThreadsX + col_id_block < num_keypoints; i++){
             col_id = i*maxThreadsX + col_id_block;
             int kp_idy = mask_idx[col_id];
-            if(
-            if(mask[row_id]==true&&l3[row_id]<l3[col_id]){
-                mask[row_id]=false;
+            if(adj[row_id*num_keypoints+col_id]&&mask[kp_idx]){
+                if(l3[kp_idx]<l3[kp_idy])mask[kp_idx]=false;
             }
         }
     }
 }
 
-void nms(int num_keypoints,int* adj,int* mask,int* mask_idx,const float* l3){
-    float* l3_dev = NULL;
+void nms(const int num_keypoints,
+         const int num_points,
+         const int* adj,
+         int* mask,
+         const int* mask_idx,
+         const float* l3){
     int* mask_dev = NULL;
-    //printf("current radius before cuda is: %f", radius);
+    int* mask_idx_dev = NULL;
+    int *adj_dev = NULL;
+    float* l3_dev = NULL;
+    
+    CUDA_CHECK(cudaMalloc(&mask_dev,num_points*sizeof(int)));
+    CUDA_CHECK(cudaMemcpy(mask_dev,
+                          mask,
+                          num_points*sizeof(int),
+                          cudaMemcpyHostToDevice));
+    
+    CUDA_CHECK(cudaMalloc(&mask_idx_dev,num_keypoints*sizeof(int)));
+    CUDA_CHECK(cudaMemcpy(mask_idx_dev,
+                          mask_idx,
+                          num_keypoints*sizeof(int),
+                          cudaMemcpyHostToDevice));
+     
+    CUDA_CHECK(cudaMalloc(&adj_dev,num_points*num_points*sizeof(int)));
+    CUDA_CHECK(cudaMemcpy(adj_dev,
+                          adj,
+                          num_points*num_points*sizeof(int),
+                          cudaMemcpyHostToDevice));
+    
     CUDA_CHECK(cudaMalloc(&l3_dev,num_points*sizeof(float)));
     CUDA_CHECK(cudaMemcpy(l3_dev,
                           l3,
-                          num_points*sizeof(float),
-                          cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMalloc(&mask_dev,num_points*sizeof(int)));
-    CUDA_CHECK(cudaMemcpy(mask,
-                          mask_dev,
                           num_points*sizeof(float),
                           cudaMemcpyHostToDevice));
     
     dim3 blocks(maxThreadsX/xPerBlock,maxThreadsY/yPerBlock);
     dim3 threads(xPerBlock,yPerBlock);
 
-    _nms_kernel<<<blocks, threads>>>(mask_dev,
-                                     l3_dev,
-                                     num_points);
-
+    _nms_kernel<<<blocks, threads>>>(num_keypoints,
+                                     num_points,
+                                     adj_dev,
+                                     mask_dev,
+                                     mask_idx_dev,
+                                     l3_dev);
+    
     CUDA_CHECK(cudaMemcpy(mask,
                           mask_dev,
-                          num_points*num_points*sizeof(float),
+                          num_points*sizeof(int),
                           cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaFree(adj_dev));
     CUDA_CHECK(cudaFree(l3_dev));
     CUDA_CHECK(cudaFree(mask_dev));
+    CUDA_CHECK(cudaFree(mask_idx_dev));
 }

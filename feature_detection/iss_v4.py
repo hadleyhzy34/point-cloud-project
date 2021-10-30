@@ -9,7 +9,7 @@ from nms.gpu_nms import gpu_nms
 
 def iss(data, gamma21, gamma32, KDTree_radius, NMS_radius, max_num=100):
     """
-    Description: intrinsic shape signatures algorithm
+    Description: intrinsic shape signatures algorithm based on cuda FRNN and cuda maximum suppression
     Args:
         data: numpy array of point cloud, shape(num_points, 3)
         gamma21:
@@ -56,10 +56,17 @@ def iss(data, gamma21, gamma32, KDTree_radius, NMS_radius, max_num=100):
         if l2 / l1 < gamma21 and l3 / l2 < gamma32:
             is_keypoint[i] = True
 
+    import ipdb;ipdb.set_trace()
     print("performing nms based on cuda")
-    l3_array = np.asarray(l3_list)
-    gpu_nms(is_keypoint, l3_array, KDTree_radius)
+    is_keypoint = is_keypoint.astype(np.int32)
+    is_keypoint_idx = np.argwhere(is_keypoint==1)[:,0].astype(np.int32)
+    l3_array = np.asarray(l3_list).astype(np.float32)
+    gpu_nms(is_keypoint,
+            is_keypoint_idx,
+            adj,
+            l3_array)
 
+    is_keypoint = is_keypoint.astype(bool)
     """
     # For each point (pi) in the point cloud
     for i in tqdm(range(len(is_keypoint))):
@@ -102,7 +109,7 @@ def main():
     """
     pts = pcl_data()
     # pts = kitti_random_pcl()
-    keypoint = iss(pts, gamma21=0.6, gamma32=0.6, KDTree_radius=0.15, NMS_radius=0.3, max_num=5000)
+    keypoint = iss(pts, gamma21=0.6, gamma32=0.6, KDTree_radius=0.25, NMS_radius=0.3, max_num=5000)
     
     pts_colors = np.tile([0.5,0.5,0.5], (pts.shape[0], 1))
     pts_colors[keypoint] = np.array([1,0,0])
