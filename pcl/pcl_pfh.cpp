@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
     //it prints out histogram of each cloud point for each one of 125 bins
 	for (int m=0; m<pfhs->size();m++)
 	{
-        std::cout<<"current dimension index is: "<<m<<" "<<pfhs->size()<<std::endl;
+        std::cout<<"current point index is: : "<<m<<" "<<pfhs->size()<<std::endl;
 		plotter->addFeatureHistogram<pcl::PFHSignature125>(*pfhs, "pfh", m, std::to_string(m)/*"one_fpfh"*/);
 		plotter->setWindowSize(800, 600);
 		plotter->spinOnce(1000);

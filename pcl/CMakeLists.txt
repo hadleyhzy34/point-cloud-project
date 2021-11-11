@@ -7,9 +7,9 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
  
-add_executable(pcl_pfh pcl_pfh.cpp)
+add_executable(pcl_fpfh pcl_fpfh.cpp)
  
-target_link_libraries (pcl_pfh ${PCL_LIBRARIES})
+target_link_libraries (pcl_fpfh ${PCL_LIBRARIES})
  
-install(TARGETS pcl_pfh RUNTIME DESTINATION bin)
+install(TARGETS pcl_fpfh RUNTIME DESTINATION bin)
  
