@@ -11,26 +11,49 @@
 
 using namespace std::chrono_literals;
 
+void print4x4Matrix (const Eigen::Matrix4d & matrix)                            
+{      printf ("Rotation matrix :\n");                                               
+       printf ("    | %6.3f %6.3f %6.3f | \n", matrix (0, 0), matrix (0, 1), matrix (0, 2));
+       printf ("R = | %6.3f %6.3f %6.3f | \n", matrix (1, 0), matrix (1, 1), matrix (1, 2));
+       printf ("    | %6.3f %6.3f %6.3f | \n", matrix (2, 0), matrix (2, 1), matrix (2, 2));
+       printf ("Translation vector :\n");                                            
+       printf ("t = < %6.3f, %6.3f, %6.3f >\n\n", matrix (0, 3), matrix (1, 3), matrix (2, 3));
+}       
+
 int
 main (int argc, char** argv)
 {
   // Loading first scan of room.
-  pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud (new pcl::PointCloud<pcl::PointXYZ>);
-  if (pcl::io::loadPCDFile<pcl::PointXYZ> ("room_scan1.pcd", *target_cloud) == -1)
-  {
-    PCL_ERROR ("Couldn't read file room_scan1.pcd \n");
-    return (-1);
-  }
-  std::cout << "Loaded " << target_cloud->size () << " data points from room_scan1.pcd" << std::endl;
-
-  // Loading second scan of room from new perspective.
   pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
   if (pcl::io::loadPCDFile<pcl::PointXYZ> ("room_scan2.pcd", *input_cloud) == -1)
   {
     PCL_ERROR ("Couldn't read file room_scan2.pcd \n");
     return (-1);
   }
   std::cout << "Loaded " << input_cloud->size () << " data points from room_scan2.pcd" << std::endl;
+    
+  //defining a rotation matrix and translation vector
+  Eigen::Matrix4d transformation_matrix = Eigen::Matrix4d::Identity();
+
+  // A rotation matrix (see https://en.wikipedia.org/wiki/Rotation_matrix)    
+  double theta = M_PI / 8;  // The angle of rotation in radians               
+  transformation_matrix (0, 0) = std::cos (theta);
+  transformation_matrix (0, 1) = -sin (theta);
+  transformation_matrix (1, 0) = sin (theta);
+  transformation_matrix (1, 1) = std::cos (theta);
+  
+  // A translation on Z axis (0.4 meters)
+  transformation_matrix (0, 3) = 0.3;
+  transformation_matrix (1, 3) = 0.5;
+  transformation_matrix (2, 3) = -0.2;
+
+  // Display in terminal the transformation matrix
+  std::cout << "Applying this rigid transformation to: input_cloud -> ndt_cloud" << std::endl;
+
+  // Executing the transformation                                             
+  pcl::transformPointCloud (*input_cloud, *target_cloud, transformation_matrix);
 
   // Filtering input scan to roughly 10% of original size to increase speed of registration.
   pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud (new pcl::PointCloud<pcl::PointXYZ>);
@@ -54,6 +77,7 @@ main (int argc, char** argv)
 
   // Setting max number of registration iterations.
   ndt.setMaximumIterations (35);
+  // ndt.setMaximumIterations (10);
 
   // Setting point cloud to be aligned.
   ndt.setInputSource (filtered_cloud);
@@ -77,12 +101,15 @@ main (int argc, char** argv)
 
   // Saving transformed input cloud.
   pcl::io::savePCDFileASCII ("room_scan2_transformed.pcd", *output_cloud);
+    
+  //print transformation matrix
+  std::cout<<ndt.getFinalTransformation() <<std::endl;
 
   // Initializing point cloud visualizer
   pcl::visualization::PCLVisualizer::Ptr
   viewer_final (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   viewer_final->setBackgroundColor (0, 0, 0);
-
+    
   // Coloring and visualizing target cloud (red).
   pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>
   target_color (target_cloud, 255, 0, 0);
@@ -90,12 +117,21 @@ main (int argc, char** argv)
   viewer_final->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                   1, "target cloud");
 
-  // Coloring and visualizing transformed input cloud (green).
+  // Coloring and visualizing transformed filtered input cloud (green).
   pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>
   output_color (output_cloud, 0, 255, 0);
   viewer_final->addPointCloud<pcl::PointXYZ> (output_cloud, output_color, "output cloud");
   viewer_final->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                   1, "output cloud");
+  
+  /*
+  // Coloring and visualizing unfiltered input cloud (green).
+  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>
+  input_color (input_cloud, 0, 0, 255);
+  viewer_final->addPointCloud<pcl::PointXYZ> (input_cloud, input_color, "input cloud");
+  viewer_final->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                  1, "input cloud");
+  */
 
   // Starting visualizer
   viewer_final->addCoordinateSystem (1.0, "global");
