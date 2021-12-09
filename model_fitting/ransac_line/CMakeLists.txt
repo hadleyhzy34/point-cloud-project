@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 2.8)
+project( DisplayImage )
+find_package( OpenCV REQUIRED )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+add_compile_options(-ggdb)
+add_executable( ransac_line ransac_line.cpp )
+target_link_libraries( ransac_line ${OpenCV_LIBS} )

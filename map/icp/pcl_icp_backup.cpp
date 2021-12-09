@@ -13,8 +13,8 @@ int
 main (int argc, char** argv)
 {
   // Loading first scan of room.
-  pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud (new pcl::PointCloud<pcl::PointXYZ>);
-  if (pcl::io::loadPCDFile<pcl::PointXYZ> ("test.pcd", *target_cloud) == -1)
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr target_cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
+  if (pcl::io::loadPLYFile<pcl::PointXYZRGB> ("out_1959.ply", *target_cloud) == -1)
   {
     PCL_ERROR ("Couldn't read file room_scan1.pcd \n");
     return (-1);
@@ -27,7 +27,7 @@ main (int argc, char** argv)
   // Coloring and visualizing target cloud (red).
   //pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB>
   //target_color (target_cloud, 255, 0, 0);
-  viewer_final->addPointCloud<pcl::PointXYZ> (target_cloud,"target cloud");
+  viewer_final->addPointCloud<pcl::PointXYZRGB> (target_cloud,"target cloud");
   //viewer_final->addPointCloud<pcl::PointXYZ> (target_cloud, target_color, "target cloud");
   viewer_final->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                   1, "target cloud");

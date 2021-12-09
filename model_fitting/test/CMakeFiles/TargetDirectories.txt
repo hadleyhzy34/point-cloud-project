@@ -1,0 +1,3 @@
+/data/development/point_cloud/model_fitting/test/CMakeFiles/rebuild_cache.dir
+/data/development/point_cloud/model_fitting/test/CMakeFiles/edit_cache.dir
+/data/development/point_cloud/model_fitting/test/CMakeFiles/test.dir

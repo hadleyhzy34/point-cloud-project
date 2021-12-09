@@ -1,21 +1,22 @@
-# 实现voxel滤波，并加载数据集中的文件进行验证
-
 import open3d as o3d 
 import os
 import numpy as np
 from pyntcloud import PyntCloud
 
-# 功能：对点云进行voxel滤波
-# 输入：
-#     point_cloud：输入点云
-#     leaf_size: voxel尺寸
+
 def voxel_filter(point_cloud, leaf_size):
+    '''
+    function: point cloud voxelization through randomly sampling
+    args:
+        point_cloud
+        leaf_size
+    return:
+        filtered points
+    '''
     filtered_points = []
     points = np.asarray(point_cloud) #change pcd.points data type to numpy array
 
-    # import ipdb;ipdb.set_trace()
-    # 作业3
-    # 屏蔽开始
+    import ipdb;ipdb.set_trace()
     points_min = np.min(points, axis=0)
     points_max = np.max(points, axis=0)
 
@@ -35,6 +36,7 @@ def voxel_filter(point_cloud, leaf_size):
         h_z = (points[i,2]-points_min[2])//leaf_size
         idx[i] = h_x+h_y*d_x+h_z*d_y*d_z
     
+    import ipdb;ipdb.set_trace()
     sort_idx = idx.argsort()[::-1]  # be careful to add () after argsort
 
     # # centroid method
@@ -70,9 +72,7 @@ def voxel_filter(point_cloud, leaf_size):
             centroid.append(temp[int(np.random.rand()*len(temp))])
     
     filtered_points = centroid
-    # 屏蔽结束
     
-    # 把点云格式改成array，并对外返回
     filtered_points = np.array(filtered_points, dtype=np.float64)
     return filtered_points
 
@@ -88,7 +88,7 @@ def main():
     # file_name = "/Users/renqian/Downloads/program/cloud_data/11.ply"
     # point_cloud_pynt = PyntCloud.from_file(file_name)
     point_cloud_o3d = o3d.geometry.PointCloud()
-    points = np.loadtxt("../../modelnet40_normal_resampled/airplane/airplane_0281.txt",delimiter=',')
+    points = np.loadtxt("/data/development/point_cloud/modelnet40_normal_resampled/airplane/airplane_0281.txt",delimiter=',')
     points = points[:,0:3]
     point_cloud_o3d.points = o3d.utility.Vector3dVector(points)
 

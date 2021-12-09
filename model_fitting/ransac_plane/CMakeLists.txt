@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 2.8)
+project( ransac_plane )
+find_package( OpenCV REQUIRED )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+add_compile_options(-ggdb)
+add_executable( ransac_plane ransac_plane.cpp )
+target_link_libraries( ransac_plane ${OpenCV_LIBS} )
