@@ -1,66 +1,55 @@
-//====================================================================//
-//Program:RANSAC直线拟合，并与最小二乘法结果进行对比
-//Data:2020.2.29
-//Author:liheng
-//Version:V1.0
-//====================================================================//
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <opencv2/viz.hpp>
 
-
-//RANSAC 拟合2D 直线
-//输入参数：points--输入点集
-//        iterations--迭代次数
-//        sigma--数据和模型之间可接受的差值,车道线像素宽带一般为10左右
-//              （Parameter use to compute the fitting score）
-//        k_min/k_max--拟合的直线斜率的取值范围.
-//                     考虑到左右车道线在图像中的斜率位于一定范围内，
-//                      添加此参数，同时可以避免检测垂线和水平线
-//输出参数:line--拟合的直线参数,It is a vector of 4 floats
-//              (vx, vy, x0, y0) where (vx, vy) is a normalized
-//              vector collinear to the line and (x0, y0) is some
-//              point on the line.
-//返回值：无
-
-void ransac( std::vector<cv::Point3f>& pts_3d, int max_iter, float threshold)
+void ransac(std::vector<cv::Point3f>& points, cv::Vec4f &bestplane, int max_iter, float threshold)
 {
-	srand(time(0)); //随机种子
-	int bestScore = 0;
-	double a, b, c, d; //平面法向量系数
+    unsigned int n = points.size();
 
-	while (--max_iter) //设置循环的次数
-	{
-        std::vector<int> index;
-		for (int k = 0; k < 3; ++k)
-		{
-			index.push_back(rand() % pts_3d.size()); //随机选取三个点
-		}
-		auto idx = index.begin();
-		double x1 = pts_3d.at(*idx).x, y1 = pts_3d.at(*idx).y, z1 = pts_3d.at(*idx).z;
-		++idx;
-		double x2 = pts_3d.at(*idx).x, y2 = pts_3d.at(*idx).y, z2 = pts_3d.at(*idx).z;
-		++idx;
-		double x3 =pts_3d.at(*idx).x, y3 = pts_3d.at(*idx).y, z3 = pts_3d.at(*idx).z;
+    if(n<3)
+    {
+        return;
+    }
 
-		a = (y2 - y1)*(z3 - z1) - (z2 - z1)*(y3 - y1);
-		b = (z2 - z1)*(x3 - x1) - (x2 - x1)*(z3 - z1);
-		c = (x2 - x1)*(y3 - y1) - (y2 - y1)*(x3 - x1);
-		d = -(a*x1 + b*y1 + c*z1);
-        
+    cv::RNG rng;
+    //double bestScore = -1.;
+    int bestScore = 0;
+    for(int i=0; i<max_iter; i++)
+    {
+        int i1=0, i2=0, i3=0;
         int score = 0;
-		for (auto iter = pts_3d.begin(); iter != pts_3d.end(); ++iter)
-		{
-			double dis = fabs(a*iter->x + b*iter->y + c*iter->z + d) / sqrt(a*a + b*b + c*c);//点到平面的距离公式
-			// if (dis < threshold)	index.push_back(iter - pts_3d.begin());
-            if(dis < threshold) score++;
-		}
-		
-        if (score > bestScore)
-	    {
-			bestScore = score;
-		}
-	}
+        while(i1==i2||i1==i3||i2==i3)
+        {
+            i1 = rng(n);
+            i2 = rng(n);
+            i3 = rng(n);
+        }
+        const cv::Point3f& p1 = points[i1];
+        const cv::Point3f& p2 = points[i2];
+        const cv::Point3f& p3 = points[i3];
+        
+        cv::Point3f p12 = p2 - p1;
+        cv::Point3f p13 = p3 - p1;
+        //3d vector cross product
+        cv::Point3f dp  = {p12.y*p13.z - p12.z*p13.y, p12.z*p13.x - p12.x*p13.z, p12.x*p13.y - p12.y*p13.x};
+        //plane: dp[0]x+dp[1]y+dp[2]z+k=0 
+        float k = -(p1.x*dp.x + p1.y*dp.y + p1.z*dp.z);
+        
+        for(int i=0;i<n;i++){
+            double d = fabs(dp.x*points[i].x+dp.y*points[i].y+dp.z*points[i].z+k)/norm(dp);
+            if(d < threshold) score += 1;
+        }
+
+        if(score > bestScore)
+        {
+            bestplane = cv::Vec4f(dp.x, dp.y, dp.z, k);
+            bestplane *= 1./fabs(k);
+            bestScore = score;
+        }
+    }
+    
     std::cout<<bestScore<<std::endl;
+    std::cout<<bestplane[0]<<" "<<bestplane[1]<<" "<<bestplane[2]<<" "<<bestplane[3]<<std::endl;
 }
 
 
@@ -116,96 +105,53 @@ void fitLineRansac(const std::vector<cv::Point2f>& points,
 
 int main()
 {
-    cv::Mat image(720,1280,CV_8UC3,cv::Scalar(125,125,125));
-
-    //以车道线参数为(0.7657,-0.6432,534,548)生成一系列点
-    double k = -0.6432/0.7657;
-    double b = 548 - k*534;
-
-    std::vector<cv::Point2f> points;
-
-    for (int i = 360; i < 720; i+=10)
-    {
-        cv::Point2f point(int((i-b)/k),i);
-        points.emplace_back(point);
-    }
-
-    //加入直线的随机噪声
+    std::vector<cv::Point3f> points;
+    
     cv::RNG rng((unsigned)time(NULL));
-    for (int i = 360; i < 720; i+=10)
+    for (int i = 0; i < 500; i+=10)
     {
-        int x = int((i-b)/k);
-        x = rng.uniform(x-10,x+10);
-        int y = i;
-        y = rng.uniform(y-30,y+30);
-        cv::Point2f point(x,y);
+        int temp = rng.uniform(-500,500);
+        cv::Point3f point(i,temp,i+temp+1);
+        points.emplace_back(point);
+    }
+    
+    //add noise to the points on the plane
+    for (int i = 0; i < 500; i+=10)
+    {
+        int y = rng.uniform(i-500,500-i);
+        int z = rng.uniform(i+y+1-10,i+y+1+10);
+        cv::Point3f point(i,y,z);;
         points.emplace_back(point);
     }
 
-    //加入噪声
-    for (int i = 0; i < 720; i+=20)
+    //add random points
+    for (int i = 0; i < 500; i+=20)
     {
-        int x = rng.uniform(1,640);
-        int y = rng.uniform(1,360);
+        int x = rng.uniform(-500,500);
+        int y = rng.uniform(-500,500);
+        int z = rng.uniform(-500,500);
 
-        cv::Point2f point(x,y);
+        cv::Point3f point(x,y,z);
         points.emplace_back(point);
     }
 
 
+    //z = ax + by + c
+    cv::Vec4f bestplane;
 
+    ransac(points, bestplane, 1000, 0.1);
+    std::cout<<"z=ax+by+c,estimate parameters:a="<<bestplane[0]<<",b="<<bestplane[1]<<",c="<<bestplane[2]<<std::endl;
 
-
-    int n = points.size();
-    for (int j = 0; j < n; ++j)
-    {
-        cv::circle(image,points[j],5,cv::Scalar(0,0,0),-1);
-    }
-
-
-    //RANSAC 拟合
-    if(1)
-    {
-        cv::Vec4f lineParam;
-        fitLineRansac(points,lineParam,1000,10);
-        double k = lineParam[1] / lineParam[0];
-        double b = lineParam[3] - k*lineParam[2];
-
-        cv::Point p1,p2;
-        p1.y = 720;
-        p1.x = ( p1.y - b) / k;
-
-        p2.y = 360;
-        p2.x = (p2.y-b) / k;
-
-        cv::line(image,p1,p2,cv::Scalar(0,255,0),2);
-    }
-
-
-    //最小二乘法拟合
-    if(1)
-    {
-        cv::Vec4f lineParam;
-        cv::fitLine(points,lineParam,cv::DIST_L2,0,0.01,0.01);
-        double k = lineParam[1] / lineParam[0];
-        double b = lineParam[3] - k*lineParam[2];
-
-        cv::Point p1,p2;
-        p1.y = 720;
-        p1.x = ( p1.y - b) / k;
-
-        p2.y = 360;
-        p2.x = (p2.y-b) / k;
-
-        cv::line(image,p1,p2,cv::Scalar(0,0,255),2);
-    }
-
-
-
-
-    cv::imshow("image",image);
-    cv::waitKey(0);
-
-    return 0;
+    cv::viz::Viz3d window; //creating a Viz window
+    //Displaying the Coordinate Origin (0,0,0)
+    window.showWidget("coordinate", cv::viz::WCoordinateSystem(10));
+    //Displaying the 3D points in green
+    window.showWidget("points", cv::viz::WCloud(points, cv::viz::Color::green()));
+    //displaying plane
+    cv::Point3d center_1(0.,0.,-bestplane[3]/bestplane[2]);
+    cv::Vec3d normal(bestplane[0], bestplane[1], bestplane[2]);
+    cv::Vec3d center_2(0,-bestplane[3]/bestplane[1],bestplane[3]/bestplane[2]); 
+    window.showWidget("plane", cv::viz::WPlane(center_1,normal,center_2,cv::Size2d(500.0,500.0),cv::viz::Color::red()));
+    window.spin();
 }
 
