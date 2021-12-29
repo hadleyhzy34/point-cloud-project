@@ -61,7 +61,7 @@ int main (int argc, char** argv)
 
     std::cout << "Test PCL reading and visualization" << std::endl;             
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source(new pcl::PointCloud<pcl::PointXYZ>);
-    createCloudFromTxt("/home/swarm/developments/point_cloud/modelnet40_normal_resampled/airplane/airplane_0308.txt",cloud_source);
+    createCloudFromTxt("/data/developments/point_cloud/modelnet40_normal_resampled/airplane/airplane_0308.txt",cloud_source);
     
     // Defining a rotation matrix and translation vector
     Eigen::Matrix4d transformation_matrix = Eigen::Matrix4d::Identity ();   
